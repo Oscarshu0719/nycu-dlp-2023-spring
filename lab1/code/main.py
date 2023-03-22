@@ -11,7 +11,7 @@ from src.model import Model
 from src.utils import utils
 
 """
-TODO: Hidden layers back-propgation.
+TODO: Backpropagation of any number of hidden layers.
 """
 
 class Solver(object):
