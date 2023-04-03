@@ -1,0 +1,11 @@
+\chapter{Conclusion}
+\indent
+	After trying so many experiments, I found some patterns for this task: 
+	\begin{itemize}
+		\item \code{Adam} optimizer is \textbf{better} than \code{SGD} optimizer.
+		\item \code{ReLU} and \code{LeakyReLU} are \textbf{better} than \code{ELU} for EEGNet, but similar for DeepConvNet.
+		\item EEGNet has better accuracy than DeepConvNet, 
+		though DeepConvNet has larger model size (150577) than EEGNet (17874), and
+		this may be due to the inappropriate model structure, 
+		like number of layers, kernel size, and etc.
+	\end{itemize}
