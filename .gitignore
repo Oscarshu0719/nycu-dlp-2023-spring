@@ -35,8 +35,6 @@ build/
 ### Self-defined ###
 **/.DS_Store
 **/__pycache__/
-*.npz
-*.npy
 *.pth
 **/data/
 **/tmp/
