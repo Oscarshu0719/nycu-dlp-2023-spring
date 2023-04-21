@@ -1,0 +1,183 @@
+\chapter{Experiment setups}
+\indent
+    Experiment setups are listed in this chapter including 3 parts, 
+    ResNet, Data preprocess and DataLoader, and confusion matrix.
+
+\section{ResNet}
+\indent
+	ResNet is composed of \code{BasicBlock}, \code{BottleNeck} (See Listings \ref{basicblock} and \ref{bottleneck}). \\
+	\code{BasicBlock} is used by ResNet-18 and \code{BottleNeck} is used by ResNet-50, 
+	since the structure of each block of two models are different, but the overall architecture is the same. \\
+	\code{__make_layers} function in \code{ResNet} is used to create the blocks, and \code{__init_weights} is used to initialize weights of layers (See Listing \ref{resnet}).
+    The last layer of \code{ResNet}, i.e. \code{classifier}, is different from original, since the input image size is $512 \times 512$ in this task. \\
+    In this experiment, the pretrained model is loaded from \code{torchvision} library, and 
+    the train-from-scratch model uses the hand-crafted model without loading weights. If we want to use ResNet-18 or ResNet-50, 
+    call functions \code{ResNet_18} or \code{ResNet_50}, respectively.
+
+\begin{lstlisting}[language=Python, caption={Python code of \textcolor{blue}{\textbf{BasicBlock}} (some code is omitted).}, label={basicblock}]
+class BasicBlock(nn.Module):
+	expansion = 1
+
+	def __init__(self, 
+			in_channels: int, out_channels: int, stride: int) -> None:
+		super().__init__()
+		
+		self.conv1 = ConvBlock(
+			in_channels, out_channels, kernel_size=3, 
+			stride=stride, padding=1, bias=False)
+		self.conv2 = ConvBlock(
+			out_channels, out_channels, kernel_size=3, 
+			stride=1, padding=1, bias=False, activation=None)
+		self.relu1 = nn.ReLU(inplace=True)
+		
+		if stride >= 2 or in_channels != out_channels:
+			self.shortcut = nn.Sequential(
+				nn.Conv2d(
+					in_channels, out_channels, kernel_size=1, 
+					stride=stride, padding=0, bias=False),
+				nn.BatchNorm2d(out_channels)
+			)
+		else: 
+			self.shortcut = nn.Sequential()\end{lstlisting}
+
+\begin{lstlisting}[language=Python, caption={Python code of \textcolor{blue}{\textbf{BottleNeck}} (some code is omitted).}, label={bottleneck}]
+class BottleNeck(nn.Module):
+	expansion = 4
+
+	def __init__(self, 
+			in_channels: int, out_channels: int, stride: int) -> None:
+		super().__init__()
+		
+		self.conv1 = ConvBlock(
+			in_channels, out_channels, kernel_size=1, 
+			stride=1, padding=0, bias=False)
+		self.conv2 = ConvBlock(
+			out_channels, out_channels, kernel_size=3, 
+			stride=stride, padding=1, bias=False)
+		self.conv3 = ConvBlock(
+			out_channels, out_channels * 4, kernel_size=1, 
+			stride=1, padding=0, bias=False, activation=None)
+		self.relu1 = nn.ReLU(inplace=True)
+
+		if stride >= 2 or in_channels != out_channels * 4:
+			self.shortcut = nn.Sequential(
+				nn.Conv2d(
+					in_channels, out_channels * 4, kernel_size=1, 
+					stride=stride, padding=0, bias=False),
+				nn.BatchNorm2d(out_channels * 4)
+			)
+		else:
+			self.shortcut = nn.Sequential()\end{lstlisting}
+
+\begin{lstlisting}[language=Python, caption={Python code of \textcolor{blue}{\textbf{ResNet}} (some code is omitted).}, label={resnet}]
+class ResNet(nn.Module):
+    def __init__(self, 
+            block: Union[BasicBlock, BottleNeck], groups: list, num_classes: int, 
+            dim_hidden=128, init_weights=True) -> None:
+        super().__init__()
+        
+        self.channels = 64
+        self.block = block
+        
+        self.conv1_x = nn.Sequential(
+            nn.Conv2d(
+                in_channels=3, out_channels=self.channels, 
+                kernel_size=7, stride=2, padding=3, bias=False), 
+            nn.BatchNorm2d(self.channels), 
+            nn.ReLU(inplace=True), 
+            nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
+        )
+        self.conv2_x = self.__make_layers(64, groups[0], 1)
+        self.conv3_x = self.__make_layers(128, groups[1], 2)
+        self.conv4_x = self.__make_layers(256, groups[2], 2)
+        self.conv5_x = self.__make_layers(512, groups[3], 2)
+        
+        self.classifier = nn.Sequential(
+            nn.AdaptiveAvgPool2d((1, 1)),
+            nn.Flatten(),
+            nn.Linear(
+                in_features=512 * self.block.expansion, 
+                out_features=dim_hidden),
+            nn.ReLU(inplace=True),
+            nn.Dropout(p=0.25),
+            nn.Linear(in_features=dim_hidden, out_features=num_classes), 
+        )
+        
+        if init_weights:
+            self.__init_weights()
+
+def ResNet_18(num_classes=5):
+    return ResNet(block=BasicBlock, groups=[2, 2, 2, 2], num_classes=num_classes)
+def ResNet_50(num_classes=5):
+    return ResNet(block=BottleNeck, groups=[3, 4, 6, 3], num_classes=num_classes)\end{lstlisting}
+
+\section{Data preprocess and DataLoader}
+\indent
+\subsection{Data preprocess}
+	For the training set, I first call function \code{center_crop} to \textbf{centerly crop} each image to get rid off the useless part, and 
+    make the cropped image square. Then, \code{RandomHorizontalFlip} and \code{RandomVerticalFlip} with 50\% probability, and 
+    \code{Resize} it to be $512 \times 512$. But for testing set, each image is \textbf{centerly cropped} and \code{Resize} only (See Listing \ref{dataloader}). \\
+    This preprocess method makes the transformed images contain only the retina, and horizontal and vertical flips are data augmentation to let the model
+    learn from different kinds of input to improve model generalization and capacity. \\
+    Normalization is not necessary in this task empirically, since the accuracy does not improve. 
+    Without normalization the computation cost is reduced a little bit.
+
+\subsection{DataLoader}
+	\code{DataLoader} is implemented by a class with two classes as members, training dataset and testing dataset. And 
+    \code{get_data_loader} function returns Dataloaders of training and testing sets (See Listing \ref{dataloader}). \\
+    
+\begin{lstlisting}[language=Python, caption={Python code of \textcolor{blue}{\textbf{DataLoader}} (some code is omitted).}, label={dataloader}]
+class RetinopathyDataLoader(object):
+    def __init__(self, dir_dataset: str, transform: Optional[list]=[
+            transforms.RandomHorizontalFlip(p=0.5),
+            transforms.RandomVerticalFlip(p=0.5), 
+            transforms.Resize((512, 512)), 
+            transforms.ToTensor()
+        ]) -> None:
+        
+        self.transform = transform if transform else []
+        self.transform = transforms.Compose(self.transform)
+        
+        self.training_set = self.RetinopathyTrainingDataset(
+            dir_dataset, self.transform)
+        self.testing_set = self.RetinopathyTestingDataset(
+            dir_dataset, transforms.Compose([
+               transforms.Resize((512, 512)), transforms.ToTensor()]))
+        
+    def get_data_loader(self, 
+            batch_size: int, num_workers: int, shuffle=True) -> list[DataLoader, DataLoader]:
+        return [
+            DataLoader(self.training_set, batch_size=batch_size, 
+                shuffle=shuffle, num_workers=num_workers), 
+            DataLoader(self.testing_set, batch_size=batch_size, 
+                shuffle=shuffle, num_workers=num_workers)]
+
+def center_crop(self, img: PIL.Image): 
+    width, height = img.size
+    cropped = img.crop(((width - height) / 2, 0, (width + height) / 2, height))
+
+    return cropped\end{lstlisting}
+
+\section{Confusion matrix}
+\indent
+    In this experiment, confusion matrix is implemented by storing true labels and predicted labels of \textbf{epoch with best testing-accuracy}. Then, 
+    call the function \code{confusion_matrix} to create the confusion matrix. Finally, display the matrix by function \code{ConfusionMatrixDisplay}. 
+    Both functions are from \code{sklearn.metrics} (See Listing \ref{confusion-matrix}).
+
+\begin{lstlisting}[language=Python, caption={Python code of \textcolor{blue}{\textbf{Confusion matrix}} (some code is omitted).}, label={confusion-matrix}]
+def confusion_matrix(self, 
+        true_label: np.ndarray, pred_label: np.ndarray, path: str, model_name: str) -> None:
+    plt.figure(figsize=(15, 15))
+
+    plt.title(f'Confusion matrix of {model_name}')
+    plt.xlabel('Predicted label', fontsize='18')
+    plt.ylabel('True label', fontsize='18') 
+
+    cm = confusion_matrix(y_true=true_label, y_pred=pred_label, normalize='true')
+    ConfusionMatrixDisplay(
+        confusion_matrix=cm, display_labels=[0, 1, 2, 3, 4]).plot(cmap=plt.cm.Blues)
+
+    plt.savefig(path, dpi=400, bbox_inches='tight', pad_inches=0.1) 
+    plt.close()
+
+    print(f'[INFO]: Finish saving confusion matrix to {path}...')\end{lstlisting}
