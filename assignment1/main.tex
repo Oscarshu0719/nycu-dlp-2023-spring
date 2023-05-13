@@ -1,0 +1,274 @@
+\documentclass{article}
+
+\usepackage{ctex}
+\usepackage{fancyhdr}
+\usepackage{extramarks}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{amsfonts}
+\usepackage{tikz}
+\usepackage[plain]{algorithm}
+\usepackage{algpseudocode}
+\usepackage{wallpaper}
+
+\LRCornerWallPaper{.10}{img/nycu_logo.pdf}
+
+\usetikzlibrary{automata,positioning}
+
+%
+% Basic Document Settings
+%
+
+\topmargin=-0.45in
+\evensidemargin=0in
+\oddsidemargin=0in
+\textwidth=6.5in
+\textheight=9.0in
+\headsep=0.25in
+
+\linespread{1.1}
+
+\pagestyle{fancy}
+\lhead{Name: \hmwkAuthorName \\ Student ID: \studentID}
+\chead{\hmwkClass \ - \hmwkTitle}
+\rhead{\firstxmark}
+\cfoot{}
+\lfoot{\studentDept, \\ \studentSchool}
+\rfoot{\thepage}
+
+\renewcommand\headrulewidth{0.4pt}
+\renewcommand\footrulewidth{0.4pt}
+
+\setlength\parindent{0pt}
+
+%
+% Create Problem Sections
+%
+
+\newcommand{\enterProblemHeader}[1]{
+    \nobreak\extramarks{}{Problem \arabic{#1} continued on next page\ldots}\nobreak{}
+    \nobreak\extramarks{Problem \arabic{#1} (continued)}{Problem \arabic{#1} continued on next page\ldots}\nobreak{}
+}
+
+\newcommand{\exitProblemHeader}[1]{
+    \nobreak\extramarks{Problem \arabic{#1} (continued)}{Problem \arabic{#1} continued on next page\ldots}\nobreak{}
+    \stepcounter{#1}
+    \nobreak\extramarks{Problem \arabic{#1}}{}\nobreak{}
+}
+
+\setcounter{secnumdepth}{0}
+\newcounter{partCounter}
+\newcounter{homeworkProblemCounter}
+\setcounter{homeworkProblemCounter}{1}
+\nobreak\extramarks{Problem \arabic{homeworkProblemCounter}}{}\nobreak{}
+
+%
+% Homework Problem Environment
+%
+% This environment takes an optional argument. When given, it will adjust the
+% problem counter. This is useful for when the problems given for your
+% assignment aren't sequential. See the last 3 problems of this template for an
+% example.
+%
+\newenvironment{homeworkProblem}[1][-1]{
+    \ifnum#1>0
+        \setcounter{homeworkProblemCounter}{#1}
+    \fi
+    \section{Problem \arabic{homeworkProblemCounter}}
+    \setcounter{partCounter}{1}
+    \enterProblemHeader{homeworkProblemCounter}
+}{
+    \exitProblemHeader{homeworkProblemCounter}
+}
+
+%
+% Homework Details
+%   - Title
+%   - Due date
+%   - Class
+%   - Section/Time
+%   - Instructor
+%   - Author
+%
+
+\newcommand{\hmwkTitle}{Prove DDPM}
+\newcommand{\hmwkDueDate}{\today}
+\newcommand{\hmwkClass}{Deep Learning}
+\newcommand{\hmwkClassTime}{}
+\newcommand{\hmwkClassInstructor}{}
+\newcommand{\hmwkAuthorName}{許子駿}
+\newcommand{\studentID}{311551166}
+\newcommand{\studentSchool}{National Yang Ming Chiao Tung University}
+\newcommand{\studentDept}{Institute of Computer Science and Engineering}
+
+%
+% Title Page
+%
+
+\title{
+    \vspace{2in}
+    \textmd{\textbf{\hmwkClass:\ \hmwkTitle}}\\
+    \normalsize\vspace{0.1in}\small{Due\ on\ \hmwkDueDate\ at 3:10pm}\\
+    \vspace{0.1in}\large{\textit{\hmwkClassInstructor\ \hmwkClassTime}}
+    \vspace{3in}
+}
+
+\author{\hmwkAuthorName}
+\date{}
+
+\renewcommand{\part}[1]{\textbf{\large Part \Alph{partCounter}}\stepcounter{partCounter}\\}
+
+%
+% Various Helper Commands
+%
+
+% Useful for algorithms
+\newcommand{\alg}[1]{\textsc{\bfseries \footnotesize #1}}
+
+% For derivatives
+\newcommand{\deriv}[1]{\frac{\mathrm{d}}{\mathrm{d}x} (#1)}
+
+% For partial derivatives
+\newcommand{\pderiv}[2]{\frac{\partial}{\partial #1} (#2)}
+
+% Integral dx
+\newcommand{\dx}{\mathrm{d}x}
+
+% Alias for the Solution section header
+\newcommand{\solution}{\textbf{\large Solution}}
+
+% Probability commands: Expectation, Variance, Covariance, Bias
+\newcommand{\E}{\mathrm{E}}
+\newcommand{\Var}{\mathrm{Var}}
+\newcommand{\Cov}{\mathrm{Cov}}
+\newcommand{\Bias}{\mathrm{Bias}}
+
+
+\newcommand{\x}{\textbf{x}}
+\newcommand{\mat}[1]{\mathbf{#1}}
+
+\begin{document}
+
+% \maketitle
+
+\begin{homeworkProblem}
+    Given 
+    $$
+    q(\x_{1 - T} | \x_0) = \prod_{t = 1}^Tq(\x_t | \x_{t - 1})
+    $$
+    Show that
+    $$
+    q(\x_{1 - T} | \x_0) = q(\x_T | \x_0)\prod_{t = T}^2q(\x_{t - 1} | \x_T, \x_0)
+    $$
+    \textbf{Solution}\\
+    \begin{equation}
+        \begin{aligned}
+            & \ q(\x_T | \x_0)\prod_{t = T}^2q(\x_{t - 1} | \x_T, \x_0) \\
+            = & \ q(\x_T | \x_0) \left[q(\x_{T - 1} | \x_T, \x_0)q(\x_{T - 2} | \x_{T - 1}, \x_0)\cdots q(\x_2 | \x_3, \x_0)q(\x_1 | \x_2, \x_0)\right] \\
+            = & \ q(\x_T | \x_0) \left[q(\x_T | \x_{T - 1}, \x_0)\frac{q(\x_{T - 1} | \x_0)}{q(\x_T | \x_0)}q(\x_{T - 1} | \x_{T - 2}, \x_0)\frac{q(\x_{T - 2} | \x_0)}{q(\x_{T - 1} | \x_0)}\cdots\right. \\
+            & \left.q(\x_3 | \x_2, \x_0)\frac{q(\x_2 | \x_0)}{q(\x_3 | \x_0)}q(\x_2 | \x_1, \x_0)\frac{q(\x_1 | \x_0)}{q(\x_2 | \x_0)}\right] \\
+            = & \ q(\x_T | \x_0) \left[\prod_{t = 2}^Tq(\x_t | \x_{t - 1})\frac{q(\x_1 | \x_0)}{q(\x_T | \x_0)}\right] \\
+            = & \ q(\x_1 | \x_0)\prod_{t = 2}^Tq(\x_t | \x_{t - 1}) \\
+            = & \ \prod_{t = 1}^Tq(\x_t | \x_{t - 1}) \\
+            = & \ q(\x_{1 - T} | \x_0) \\
+        \end{aligned}
+    \end{equation}
+
+\end{homeworkProblem}
+\pagebreak
+
+\begin{homeworkProblem}
+    Prove Equation (4)
+    $$
+    q(\x_t | \x_0) = \mathcal{N}(\x_t; \sqrt{\bar{\alpha}_t}\x_0, (1 - \bar{\alpha}_t)\mat{I})
+    $$
+
+    \textbf{Solution}\\
+    Suppose $\epsilon_i, \forall \ i \in \{t - 1, t - 2, \cdots\} \sim \mathcal{N(\mat{0}, \mat{I})}$. Then, 
+    \begin{equation}
+        \begin{aligned}
+            \x_t & = \sqrt{\alpha_t}\x_{t - 1} + \sqrt{1 - \alpha_t}\epsilon_{t - 1} \\
+            & = \sqrt{\alpha_t}(\sqrt{\alpha_{t - 1}}\x_{t - 2} + \sqrt{1 - \alpha_{t - 1}}\epsilon_{t - 2}) + \sqrt{1 - \alpha_t}\epsilon_{t - 1} \\
+            & = \sqrt{\alpha_t\alpha_{t - 1}}\x_{t - 2} + \sqrt{\sqrt{\alpha_t - \alpha_t\alpha_{t - 1}}^2 + \sqrt{1 - \alpha_t}^2}\bar{\epsilon}_{t - 2} \\
+            & = \sqrt{\alpha_t\alpha_{t - 1}}\x_{t - 2} + \sqrt{1 - \alpha_t\alpha_{t - 1}}\bar{\epsilon}_{t - 2} \\
+            & = \cdots \\
+            & = \sqrt{\bar{\alpha}_t}\x_0 + \sqrt{1 - \bar{\alpha}_t}\epsilon
+        \end{aligned}
+    \end{equation}
+    In 3rd line, $\bar{\epsilon}_{t - 2}$ merges two Gaussian matrices $\epsilon_{t - 1}$ and $\epsilon_{t - 2}$. \\
+    Thus,
+    $$
+    q(\x_t | \x_0) = \mathcal{N}(\x_t; \sqrt{\bar{\alpha}_t}\x_0, (1 - \bar{\alpha}_t)\mat{I})
+    $$
+\end{homeworkProblem}
+\pagebreak
+
+\begin{homeworkProblem}
+    Prove Equation (6)
+    $$
+    q(\x_{t − 1} | \x_t, \x_0) = \mathcal{N}(\x_{t − 1}; \tilde{\mat{\mu}}_t(\x_t, x_0), \tilde{\beta}_t\mat{I})
+    $$
+
+    \textbf{Solution}\\
+    From Equation (4), we know that 
+    \begin{equation}
+        \begin{aligned}
+            & q(\x_t | \x_{t - 1}, \x_0) = q(\x_t | \x_{t - 1}) = \mathcal{N}(\x_t; \sqrt{1 - \beta_t}\x_{t - 1}, \beta_t\mat{I}) \\
+            & q(\x_{t - 1} | \x_0) = \mathcal{N}(\x_{t - 1}; \sqrt{\bar{\alpha}_{t - 1}}\x_0, (1 - \bar{\alpha}_{t - 1})\mat{I}) \\
+            & q(\x_t | \x_0) = \mathcal{N}(\x_t; \sqrt{\bar{\alpha}_t}\x_0, (1 - \bar{\alpha}_t)\mat{I}) \\
+        \end{aligned}
+    \end{equation}
+    Thus, 
+    \begin{equation}
+        \begin{aligned}
+            & \ q(\x_{t − 1} | \x_t, \x_0) \\
+            = & \ q(\x_t | \x_{t - 1}, \x_0)\frac{q(\x_{t - 1} | \x_0)}{q(\x_t | \x_0)} \\ 
+            \propto & \ \exp\left(-\frac{1}{2}\left(\frac{(\x_t - \sqrt{\alpha_t}\x_{t - 1})^2}{\beta_t} + \frac{(\x_{t - 1} - \sqrt{\bar{\alpha}_{t - 1}}\x_0)^2}{1 - \bar{\alpha}_{t - 1}} + \frac{(\x_t - \sqrt{\bar{\alpha}_t}\x_0)^2}{1 - \bar{\alpha}_t}\right)\right) \\
+            = & \ \exp\left(-\frac{1}{2}\left(\left(\frac{\alpha_t}{\beta_t} + \frac{1}{1 - \bar{\alpha}_{t - 1}}\right)\x_{t - 1}^2 - \left(\frac{2\sqrt{\alpha_t}}{\beta_t}\x_t + \frac{2\sqrt{\bar{\alpha}_{t - 1}}}{1 - \bar{\alpha}_{t - 1}}\x_0\right)\x_{t - 1} + C(\x_t, \x_0)\right)\right) \\
+        \end{aligned}
+    \end{equation}
+    $C(\x_t, \x_0)$ does not depend on $\x_{t - 1}$, can be omitted. Then, 
+    \begin{equation}
+        \begin{aligned}
+        \tilde{\beta}_t & = 1 / \left(\frac{\alpha_t}{\beta_t} + \frac{1}{1 - \bar{\alpha}_{t - 1}}\right) = \frac{1 - \bar{\alpha}_{t - 1}}{1 - \bar{\alpha}_t} \cdot \beta_t \\
+        \tilde{\mat{\mu}}(\x_t, \x_0) & = \left(\frac{\sqrt{\alpha_t}}{\beta_t}\x_t + \frac{\sqrt{\bar{\alpha}_{t - 1}}}{1 - \bar{\alpha}_{t - 1}}\x_0\right) / \left(\frac{\alpha_t}{\beta_t} + \frac{1}{1 - \bar{\alpha}_{t - 1}}\right) \\
+        & = \left(\frac{\sqrt{\alpha_t}}{\beta_t}\x_t + \frac{\sqrt{\bar{\alpha}_{t - 1}}}{1 - \bar{\alpha}_{t - 1}}\x_0\right)\frac{1 - \bar{\alpha}_{t - 1}}{1 - \bar{\alpha}_t} \cdot \beta_t \\
+        & = \frac{\sqrt{\alpha}_t(1 - \bar{\alpha}_{t - 1})}{1 - \bar{\alpha}_t}\x_t + \frac{\sqrt{\bar{\alpha}_{t - 1}}\beta_t}{1 - \bar{\alpha}_t}\x_0 \\
+        \text{where } & q(\x_{t − 1} | \x_t, \x_0) = \mathcal{N}(\x_{t − 1}; \tilde{\mat{\mu}}_t(\x_t, x_0), \tilde{\beta}_t\mat{I})
+        \end{aligned}
+    \end{equation}
+    
+\end{homeworkProblem}
+\pagebreak
+
+\begin{homeworkProblem}
+    Prove Equation (8)
+    $$
+    L_{t − 1} = \mathbb{E}_q\left[\frac{1}{2\sigma^2_t}||\tilde{\mat{\mu}}_t(\x_t, \x_0) - \mat{\mu}_\theta(\x_t, t)||^2\right] + C
+    $$
+
+    \textbf{Solution}\\
+    From Equation (16), we have 
+    \begin{equation}
+        \begin{aligned}
+            L & = \underbrace{D_{KL}(q(\x_T | \x_0) || p_\theta(\x_T))}_{L_T} - \underbrace{\mathbb{E}_{q(\x_1 | \x_0)}\log p_\theta(\x_0 | \x_1)}_{L_0} \\
+            & + \sum_{t = 2}^T\underbrace{\mathbb{E}_{q(\x_t | \x_0)}\left[D_{KL}(q(\x_{t - 1} | \x_t, \x_0) || p_\theta(\x_{t - 1} | \x_t))\right]}_{L_{t - 1}} \\
+        \end{aligned}
+    \end{equation}
+    Fix $\Sigma_\theta(\x_t, t) = \sigma_t^2\mat{I}$. And KL divergence of two Gaussian distributions $p_1$ and $p_2$ is
+    $$
+    KL(p_1 || p_2) = \frac{1}{2}[tr(\Sigma_2^{-1}\Sigma_1) + (\mat{\mu}_2 - \mat{\mu}_1)^\intercal\Sigma_2^{-1}(\mat{\mu}_2 - \mat{\mu}_1) - n + \log\frac{\det(\Sigma_2)}{\det(\Sigma_1)}]
+    $$
+    Thus, 
+    \begin{equation}
+        \begin{aligned}
+            & \ D_{KL}(q(\x_{t - 1} | \x_t, \x_0) || p_\theta(\x_{t - 1} | \x_t)) \\
+            = & \ D_{KL}(\mathcal{N}(\x_{t - 1}; \tilde{\mat{\mu}}(\x_t, \x_0), \sigma_t^2\mat{I}) || \mathcal{N}(\x_{t - 1}; \mat{\mu}_\theta(\x_t, t), \sigma_t^2\mat{I})) \\
+            = & \ \frac{1}{2}\left(n + \frac{1}{\sigma_t^2}||\tilde{\mat{\mu}}_t(\x_t, \x_0) - \mat{\mu}_\theta(\x_t, t)||^2 - n + \log 1\right) \\
+            = & \ \frac{1}{2\sigma_t^2}||\tilde{\mat{\mu}}_t(\x_t, \x_0) - \mat{\mu}_\theta(\x_t, t)||^2 \\
+            \rightarrow & \ L_{t − 1} = \mathbb{E}_{q(\x_t | \x_0)}\left[\frac{1}{2\sigma^2_t}||\tilde{\mat{\mu}}_t(\x_t, \x_0) - \mat{\mu}_\theta(\x_t, t)||^2\right]
+        \end{aligned}
+    \end{equation}
+    
+\end{homeworkProblem}
+
+\end{document}
