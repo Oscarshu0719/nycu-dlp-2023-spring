@@ -1,0 +1,55 @@
+\chapter{Experimental results}
+\indent
+	Results are listed in this chapter including 3 parts,
+	DQN for \textit{LunarLander-v2}, DDPG for \textit{LunarLanderContinuous-v2}, and DQN for \textit{BreakoutNoFrameskip-v4}.
+
+\section{DQN for \textit{LunarLander-v2}}
+\indent
+	From Figure \ref{dqn-test-reward}, we can see that the average testing reward is \textbf{255.89}.
+
+	\begin{figure}[H]
+		\centering
+		\includegraphics[scale=0.6]{img/dqn_train_reward.png}
+		\caption{Rewards of DQN for \textit{LunarLander-v2} during training.}
+		\label{dqn-train-reward}
+	\end{figure}
+	\begin{figure}[H]
+		\centering
+		\includegraphics[width=\textwidth]{img/dqn_test_reward.png}
+		\caption{Rewards of DQN for \textit{LunarLander-v2} during evaluation.}
+		\label{dqn-test-reward}
+	\end{figure}
+
+\section{DDPG for \textit{LunarLanderContinuous-v2}}
+\indent
+	From Figure \ref{ddpg-test-reward}, we can see that the average testing reward is \textbf{206.39}.
+
+	\begin{figure}[H]
+		\centering
+		\includegraphics[scale=0.6]{img/ddpg_train_reward.png}
+		\caption{Rewards of DDPG for \textit{LunarLanderContinuous-v2} during training.}
+		\label{ddpg-train-reward}
+	\end{figure}
+	\begin{figure}[H]
+		\centering
+		\includegraphics[width=\textwidth]{img/ddpg_test_reward.png}
+		\caption{Rewards of DDPG for \textit{LunarLanderContinuous-v2} during evaluation.}
+		\label{ddpg-test-reward}
+	\end{figure}
+
+\section{DQN for \textit{BreakoutNoFrameskip-v4}}
+\indent
+	From Figure \ref{dqn-breakout-test-reward}, we can see that the average testing reward is \textbf{227.06}.
+
+	\begin{figure}[H]
+		\centering
+		\includegraphics[scale=0.6]{img/dqn_breakout_train_reward.png}
+		\caption{Rewards of DQN for \textit{BreakoutNoFrameskip-v4} during training.}
+		\label{dqn-breakout-train-reward}
+	\end{figure}
+	\begin{figure}[H]
+		\centering
+		\includegraphics[width=\textwidth]{img/dqn_breakout_test_reward.png}
+		\caption{Rewards of DQN for \textit{BreakoutNoFrameskip-v4} during evaluation.}
+		\label{dqn-breakout-test-reward}
+	\end{figure}

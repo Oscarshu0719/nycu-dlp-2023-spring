@@ -1,0 +1,45 @@
+\chapter{Discussion}
+\indent
+    Four questions and their answers are listed in this chapter.
+	
+\section{Explain effects of the discount factor}
+\indent
+    In Equation \ref{discount-factor}, $\lambda$ is discount factor, and 
+    the future effects getting smaller with the degree of $\lambda$ getting larger.
+
+    \begin{equation}\label{discount-factor}
+        G_t = R_{t + 1} + \lambda R_{t + 2} + \cdots = \sum_{k = 0}^\infty\lambda^kR_{t + k + 1}
+    \end{equation}
+
+\section{Explain benefits of epsilon-greedy in comparison to greedy action selection}
+\indent
+    It's better to balance between explore and exploit with greedy action selection, and
+    sometimes choosing other action to explore may be best action.
+
+\section{Explain the necessity of the target network}
+\indent
+    With target network and behavior network, the training process can be more stable, since 
+    Q target is output from target network and it's updated with lower frequency.
+
+\section{Describe the tricks you used in Breakout and their effects, and how they differ from those used in LunarLander}
+\indent
+    For \textit{LunarLander-v2}, \textbf{MSE loss} is used, but for \textit{BreakoutNoFrameskip-v4}, 
+    \textbf{smooth L1 loss} is used instead (See Listing \ref{dqn-breakout-update-behavior-network}).
+
+\begin{lstlisting}[language=Python, caption={Python code of \textcolor{blue}{\textbf{\_update\_behavior\_network}} of DQN for \textit{BreakoutNoFrameskip-v4}.}, label={dqn-breakout-update-behavior-network}]
+def _update_behavior_network(self, gamma):
+    state, action, reward, next_state, done = self._memory.sample(
+        self.batch_size)
+    
+    q_value = self._behavior_net(state).gather(dim=1, index=action.long())
+    with torch.no_grad():
+        q_next = self._target_net(next_state).max(dim=1)[0]
+        q_target = reward[:, 0] + gamma * q_next * (1 - done[:, 0])
+        
+    loss = F.smooth_l1_loss(q_value, q_target.unsqueeze(1))
+    
+    self._optim.zero_grad()
+    loss.backward()
+    for param in self._behavior_net.parameters():
+        param.grad.data.clamp_(-1, 1)
+    self._optim.step()\end{lstlisting}
