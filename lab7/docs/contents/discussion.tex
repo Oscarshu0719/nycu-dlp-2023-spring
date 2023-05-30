@@ -1,0 +1,10 @@
+\chapter{Discussion}
+\indent
+    As model architecture listed in Chapter \ref{experiment}, it's sufficient for model to learn 
+    and generate objects with specific multi-labels. \\
+    If activation of embedding layers, i.e., 
+    \code{GELU} activation layer between two fully connected layers, is removed, 
+    the score of generated images with testing labels would drop to about \textbf{0.7}.
+    This might be caused by the non-linearity is removed. \\
+    Also, mask is predicted during image generation, and
+    it's more intuitive and simple to optimize through MSE loss between input images and generated images. 

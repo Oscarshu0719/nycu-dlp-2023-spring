@@ -1,0 +1,138 @@
+\chapter{Experiment setups}\label{experiment}
+\indent
+    Experiment setups are listed in this chapter including 3 parts, 
+    DDPM, data loader, and hyperparameters.
+
+\section{DDPM}
+\indent
+    The diffusion model is Denoising Diffusion Probabilistic Models\footnote{\url{https://arxiv.org/abs/2006.11239}}.
+    The conditioning follows the method of Classifier-Free Diffusion Guidance\footnote{\url{https://arxiv.org/abs/2207.12598}}. \\
+    The model infuses timestep embeddings $t_e$ and context embeddings $c_e$ with the U-Net activations at layer $a_L$ via
+    $$
+    a_{L + 1} = c_ea_L + t_e
+    $$
+    During training, $c_e$ is randomly set to 0 with probability 0.1, and this makes model learn to do unconditional generation, i.e., 
+    $\psi(z_t)$ for noise $z_t$ at timestep $t$, and also conditional generation, i.e., $\psi(z_t, c)$ for context $c$. \\
+    Additionally, a weight $w \ge 0$ is necessary, to guide the model to generate samples with the following equation
+    $$
+    \hat{\epsilon}_t = (1 + w)\psi(z_t, c) - w\psi(z_t)
+    $$
+    Increasing $w$ produces images that are more typical but less diverse. \\
+    The DDPM details are listed in this section including 3 parts, 
+    UNet, noise schedule, and loss function.
+
+\subsection{UNet}
+\indent
+    The model uses asymmetric UNet, composed of 2 down-sampling layers and 3 up-sampling layers, and 
+    the final output is output of third up-sampling layer with input image concatenated. 
+    Timestep and context are embedded with 2 linear layers with one \code{GELU} activation layer in between.
+    (See Listings \ref{ddpm-unet-part}, \ref{ddpm-unet-full}, and \ref{ddpm-unet-components} for details).
+
+\begin{lstlisting}[language=Python, caption={Python code of \textcolor{blue}{\textbf{ContextUnet}} of DDPM (some code is omitted).}, label={ddpm-unet-part}]
+class ContextUnet(nn.Module):
+    def forward(self, 
+            x: torch.FloatTensor, c: torch.FloatTensor, t: torch.FloatTensor, 
+            context_mask: torch.FloatTensor) -> torch.FloatTensor:
+        # x: image, c: context, t: timestep.
+        x = self.init_conv(x)
+        down1 = self.down1(x)
+        down2 = self.down2(down1)
+        hiddenvec = self.to_vec(down2)
+
+        context_mask = (-1 * (1 - context_mask)) # flip 0 <-> 1
+        c = c * context_mask
+        
+        # embed context, time step
+        cemb1 = self.contextembed1(c).view(-1, self.n_feat * 2, 1, 1)
+        temb1 = self.timeembed1(t).view(-1, self.n_feat * 2, 1, 1)
+        cemb2 = self.contextembed2(c).view(-1, self.n_feat, 1, 1)
+        temb2 = self.timeembed2(t).view(-1, self.n_feat, 1, 1)
+
+        up1 = self.up0(hiddenvec)
+        up2 = self.up1(cemb1 * up1 + temb1, down2)
+        up3 = self.up2(cemb2 * up2 + temb2, down1)
+        out = self.out(torch.cat((up3, x), 1))
+        return out\end{lstlisting}
+
+\subsection{Noise schedule}
+\indent
+    Noise schedule follows equation
+    $$
+    \vec{x}_{t - 1} = \frac{1}{\sqrt{\alpha_t}}\left(\vec{x}_t - \frac{1 - \alpha_t}{\sqrt{1 - \bar{\alpha}_t}}\epsilon_\theta(\vec{x}_t, t)\right) + \sigma_t\vec{z}
+    $$
+    Listing \ref{ddpm-schedule} shows the noise schedule function calculates each part of above equation. 
+    During sampling, the pre-calculated values are used to sample images.\pagebreak
+
+\begin{lstlisting}[language=Python, caption={Python code of \textcolor{blue}{\textbf{ddpm\_schedules}} of DDPM.}, label={ddpm-schedule}]
+def ddpm_schedules(beta1, beta2, T):
+    assert beta1 < beta2 < 1.0, 'beta1 and beta2 must be in (0, 1)'
+
+    beta_t = (beta2 - beta1) * torch.arange(0, T + 1, dtype=torch.float32) / T + beta1
+    sqrt_beta_t = torch.sqrt(beta_t)
+    alpha_t = 1 - beta_t
+    log_alpha_t = torch.log(alpha_t)
+    alphabar_t = torch.cumsum(log_alpha_t, dim=0).exp()
+
+    sqrtab = torch.sqrt(alphabar_t)
+    oneover_sqrta = 1 / torch.sqrt(alpha_t)
+
+    sqrtmab = torch.sqrt(1 - alphabar_t)
+    mab_over_sqrtmab_inv = (1 - alpha_t) / sqrtmab
+
+    return {
+        'alpha_t': alpha_t,  # \alpha_t
+        'oneover_sqrta': oneover_sqrta,  # 1/\sqrt{\alpha_t}
+        'sqrt_beta_t': sqrt_beta_t,  # \sqrt{\beta_t}
+        'alphabar_t': alphabar_t,  # \bar{\alpha_t}
+        'sqrtab': sqrtab,  # \sqrt{\bar{\alpha_t}}
+        'sqrtmab': sqrtmab,  # \sqrt{1-\bar{\alpha_t}}
+        'mab_over_sqrtmab': mab_over_sqrtmab_inv,  # (1-\alpha_t)/\sqrt{1-\bar{\alpha_t}}
+    }\end{lstlisting}
+
+\subsection{Loss function}
+\indent
+    MSE loss is used to calculate loss between input image and generated image.
+
+\section{Data loader}
+\indent
+    Images are pre-processed with \code{Resize} to $64 \times 64$ and then 
+    \code{Normalize} with mean $(0.5, 0.5, 0.5)$ and standard deviation $(0.5, 0.5, 0.5)$. And
+    labels are converted to one-hot vectors with total 24 classes (See Listings \ref{data-loader-part} and \ref{data-loader-full} for details).
+
+\begin{lstlisting}[language=Python, caption={Python code of data pre-process and loader.}, label={data-loader-part}]
+class _ClevrTrainingDataset(Dataset):
+    def __init__(self, dir_dataset: str, dir_root='iclevr'):
+        self.transforms = transforms.Compose([
+            transforms.Resize((64, 64)),
+            transforms.ToTensor(),
+            transforms.Normalize((0.5, 0.5, 0.5),(0.5, 0.5, 0.5))])
+
+        def __getitem__(self, index):
+            img = Image.open(
+                Path(self.dir_dataset, self.dir_root, self.img_names[index])).convert('RGB')
+            img = self.transforms(img)
+            cond = self.int2one_hot(self.img_conds[index])
+            
+            return img, cond
+    
+        def int2one_hot(self, int_list):
+            one_hot = torch.zeros(self.num_classes)
+            for i in int_list:
+                one_hot[i] = 1.
+                
+            return one_hot\end{lstlisting}
+
+\section{Hyperparameters}
+\indent
+    Hyperparameters of this experiment are listed below: 
+    \begin{itemize}
+        \item Embedding size: 128.
+        \item Betas of noise schedule: ($10^{-4}$, 0.02).
+        \item Dropout of context: 0.1.
+        \item Sampling timestep: 400.
+        \item Batch size: 128.
+        \item Number of training epochs: 300.
+        \item Optimizer: Adam.
+        \item Learning rate: $10^{-4}$.
+        \item Seed: 42.
+    \end{itemize}
